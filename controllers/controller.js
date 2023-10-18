@@ -169,7 +169,22 @@ exports.isShare = async (req, res) => {
     const { isShare } = req.body;
     const { userCode } = req.payload;
     const response = await Services.isShare(isShare, userCode);
-    res.send(data);
+    res.send(response);
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.emojiStatistics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+    const { userCode } = req.payload;
+    const response = await Services.emojiStatistics(
+      startDate,
+      endDate,
+      userCode
+    );
+    res.send(response);
   } catch (error) {
     throw error;
   }

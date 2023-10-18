@@ -1,9 +1,16 @@
 const sequelize = require("../config/databaseConfig");
 const { user, emojiNotes, suggestEmojis } = require("../Models/models");
 const authentication = require("../authentication/authentication");
-const { Op } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
 exports.signUp = async (userName, password, email) => {
   try {
+    var userExists = await user.findOne({ where: { email: email } });
+    if (userExists) {
+      return {
+        statusCode: 409,
+        message: "A user is alread exists with this email.",
+      };
+    }
     const data = await user.create({ userName, email, password });
     if (data.dataValues) {
       const token = await authentication.createToken(data.dataValues);
@@ -338,6 +345,46 @@ exports.isShare = async (isShare, userCode) => {
       statusCode: 200,
       message: "Successfully updated",
       data: [],
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.emojiStatistics = async (startDate, endDate, userCode) => {
+  try {
+    const data = await emojiNotes.findAll({
+      attributes: [
+        "emoji",
+        [Sequelize.fn("COUNT", Sequelize.col("emoji")), "count"],
+        [Sequelize.fn("DATE", Sequelize.col("createdAt")), "date"],
+      ],
+      group: ["emoji", "date"],
+      where: {
+        userCode: userCode,
+        createdAt: {
+          [Op.and]: {
+            [Op.gte]: startDate,
+            [Op.lte]: endDate,
+          },
+        },
+      },
+    });
+    // console.log(data[0]);
+    // const emojiGroups = {};
+    // data.forEach((entry) => {
+    //   const emoji = entry.emoji;
+    //   const timestamp = entry.date; //timestamp.toISOString().split('T')[0]; // Get date part
+    //   if (!emojiGroups[emoji]) {
+    //     emojiGroups[emoji] = [];
+    //   }
+    //   if (!emojiGroups[emoji].includes(timestamp)) {
+    //     emojiGroups[emoji].push(timestamp);
+    //   }
+    // });
+    return {
+      statusCode: 200,
+      data: data,
     };
   } catch (error) {
     throw error;

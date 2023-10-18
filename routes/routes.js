@@ -67,4 +67,12 @@ route.post("isshare", authentication.verifyToken, Controller.isShare);
 
 route.post("/emojis", Controller.emojis);
 
+route.post(
+  "/emoji-statistics",
+  authentication.verifyToken,
+  Validation.shareUrl,
+  Validation.validator,
+  Controller.emojiStatistics
+);
+
 module.exports = route;

@@ -22,17 +22,19 @@ exports.createToken = async (data) => {
 
 exports.verifyToken = async (req, res, next) => {
   try {
-    if (!req.headers.authorization)
+    if (!req.headers.authorization) {
       res.send({
         statusCode: 401,
         message: "unauthorized",
       });
-    var decoded = JWT.verify(
-      req.headers.authorization.split(" ")[1],
-      process.env.SECRET
-    );
-    req.payload = decoded.data;
-    next();
+    } else {
+      var decoded = JWT.verify(
+        req.headers.authorization.split(" ")[1],
+        process.env.SECRET
+      );
+      req.payload = decoded.data;
+      next();
+    }
   } catch (error) {
     throw error;
   }
