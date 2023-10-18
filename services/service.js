@@ -9,6 +9,7 @@ exports.signUp = async (userName, password, email) => {
       const token = await authentication.createToken(data.dataValues);
       return {
         statusCode: 200,
+        message: "user signup successfull",
         data: {
           userCode: data.dataValues.userCode,
           token: token,
@@ -34,6 +35,7 @@ exports.login = async (password, email) => {
       const token = await authentication.createToken(data.dataValues);
       return {
         statusCode: 200,
+        message: "User logged successfully",
         data: {
           userCode: data.dataValues.userCode,
           token: token,
@@ -46,17 +48,42 @@ exports.login = async (password, email) => {
   }
 };
 
-exports.getEmojiNotes = async (userCode) => {
+exports.getEmojiNotes = async (
+  userCode,
+  sort,
+  limit,
+  page,
+  filter,
+  firstDate,
+  secondDate
+) => {
   try {
+    let order = sort ? sort : "DESC";
     const data = await emojiNotes.findAll({
-      where: { userCode, isActive: true },
+      where: {
+        userCode,
+        isActive: true,
+        // category: filter,
+        ...(firstDate && secondDate
+          ? {
+              createdAt: {
+                [Op.and]: {
+                  [Op.gte]: firstDate,
+                  [Op.lte]: secondDate,
+                },
+              },
+            }
+          : null),
+      },
       attributes: ["emoji", "emojiName", "emojiCode", "note"],
-      order: [["createdAt", "DESC"]],
-      //   offset: ,
-      //   limit:
+      order: [["createdAt", order]],
+      ...(limit && page
+        ? { offset: parseInt(page), limit: parseInt(limit) }
+        : null),
     });
     return {
       statusCode: 200,
+      message: "Users emoji notes fetched successfully",
       data: data,
     };
   } catch (error) {
@@ -77,6 +104,7 @@ exports.postEmojiNotes = async (userCode, note, emojiName, emoji, category) => {
       return {
         statusCode: 200,
         message: "Notes successfully saved",
+        data: [],
       };
     }
   } catch (error) {
@@ -93,7 +121,8 @@ exports.updateEmojiNotes = async (emojiCode, note, emojiName, emoji) => {
     if (data) {
       return {
         statusCode: 200,
-        data: "successfully updated",
+        message: "successfully updated",
+        data: [],
       };
     }
   } catch (error) {
@@ -110,7 +139,8 @@ exports.deleteEmojiNotes = async (userCode, emojiCode) => {
     if (data) {
       return {
         statusCode: 200,
-        data: "successfully deleted",
+        message: "successfully deleted",
+        data: [],
       };
     }
   } catch (error) {
@@ -129,6 +159,7 @@ exports.emojifeed = async (limit, page) => {
     });
     return {
       statusCode: 200,
+      message: "Fetching feed successfully",
       data: data,
     };
   } catch (error) {
@@ -138,11 +169,23 @@ exports.emojifeed = async (limit, page) => {
 
 exports.shareEmojiNotes = async (startDate, endDate, userCode) => {
   try {
+    var { shareUrl } = await user.findOne({
+      where: { userCode: userCode },
+      attributes: ["shareUrl"],
+    });
+    if (!shareUrl) {
+      return {
+        statusCode: 403,
+        message: "Sharing content is forbidden",
+        data: [],
+      };
+    }
     const sd = new Date(startDate);
     const ed = new Date(endDate);
     const tokenUrl = await authentication.urlToken(sd, ed, userCode);
     return {
       statusCode: 200,
+      message: "Url shared successfully",
       data: {
         url: `http://localhost:3000/v1/api/readurl?token=${tokenUrl}`,
       },
@@ -171,6 +214,7 @@ exports.readUrl = async (startDate, endDate, userCode) => {
     });
     return {
       statusCode: 200,
+      message: "Emojis successfully fetched",
       data: data,
     };
   } catch (error) {
@@ -184,6 +228,7 @@ exports.emojis = async (data) => {
     return {
       statusCode: "200",
       message: "Inserted successfullly",
+      data: [],
     };
   } catch (error) {
     throw error;
@@ -193,20 +238,26 @@ exports.emojis = async (data) => {
 exports.suggestEmoji = async (note) => {
   try {
     note = note.split(" ");
-
+    let noteModified = note.map((note) => note.toLowerCase());
     let category;
 
-    for (let i = 0; i < note.length; i++) {
-      if (["happy", "joy", "excited", "smile"].includes(note[i])) {
+    for (let i = 0; i < noteModified.length; i++) {
+      if (["happy", "joy", "excited", "smile"].includes(noteModified[i])) {
         category = "happy";
         break;
-      } else if (["sad", "unhappy", "dull", "pineapple"].includes(note[i])) {
+      } else if (
+        ["sad", "unhappy", "dull", "pineapple"].includes(noteModified[i])
+      ) {
         category = "sad";
         break;
-      } else if (["laugh", "laughing", "smile", "smiling"].includes(note[i])) {
+      } else if (
+        ["laugh", "laughing", "smile", "smiling"].includes(noteModified[i])
+      ) {
         category = "Laugh";
         break;
-      } else if (["sleep", "tired", "sleepy", "sleeping"].includes(note[i])) {
+      } else if (
+        ["sleep", "tired", "sleepy", "sleeping"].includes(noteModified[i])
+      ) {
         category = "Sleep";
         break;
       }
@@ -217,6 +268,7 @@ exports.suggestEmoji = async (note) => {
     });
     return {
       statusCode: 200,
+      message: "Emojis successfully fetched",
       data: data,
     };
   } catch (error) {
@@ -232,7 +284,7 @@ exports.emojiSummery = async (userCode, date) => {
       startDate.getMonth() + 1,
       1
     );
-    const data = await emojiNotes.findAll({
+    const moods = await emojiNotes.findAll({
       where: {
         userCode: userCode,
         createdAt: {
@@ -243,6 +295,50 @@ exports.emojiSummery = async (userCode, date) => {
         },
       },
     });
+
+    var emojiFrequencies = {};
+    const notes = [];
+    moods.forEach((mood) => {
+      // Extract emojis from the mood text (assuming mood contains emojis)
+      const emojis = mood.emoji.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\w/g);
+      if (emojis) {
+        emojis.forEach((emoji) => {
+          if (Object.prototype.hasOwnProperty.call(emojiFrequencies, emoji)) {
+            emojiFrequencies[emoji]++;
+          } else {
+            emojiFrequencies[emoji] = 1;
+          }
+        });
+      }
+
+      if (mood.note) {
+        notes.push({
+          note: mood.note,
+          emoji: mood.emoji,
+        });
+      }
+    });
+    return {
+      statusCode: 200,
+      message: "Monthly summery report fetched successfully",
+      data: {
+        frequently_used_emojis: emojiFrequencies,
+        notes: notes,
+      },
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.isShare = async (isShare, userCode) => {
+  try {
+    let res = await user.update({ isShare }, { where: { userCode: userCode } });
+    return {
+      statusCode: 200,
+      message: "Successfully updated",
+      data: [],
+    };
   } catch (error) {
     throw error;
   }

@@ -23,6 +23,10 @@ const user = sequelize.define("user", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  shareUrl: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  },
 });
 
 const emojiNotes = sequelize.define("emojiNotes", {
@@ -102,13 +106,14 @@ const emojiStatistics = sequelize.define("emojiStatastics", {
   },
 });
 
-sequelize
-  .sync()
-  .then(() => {
-    console.log("Tables created");
-  })
-  .catch((error) => {
-    throw error;
-  });
-
+if (process.env.CREATETABLE == "true") {
+  sequelize
+    .sync()
+    .then(() => {
+      console.log("Tables created");
+    })
+    .catch((error) => {
+      throw error;
+    });
+}
 module.exports = { user, emojiNotes, suggestEmojis };

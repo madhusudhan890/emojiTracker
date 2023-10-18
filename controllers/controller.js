@@ -23,7 +23,25 @@ exports.login = async (req, res) => {
 exports.getEmojiNotes = async (req, res) => {
   try {
     const { userCode } = req.payload;
-    const response = await Services.getEmojiNotes(userCode);
+    var { sort, limit, page, filter, startDate, endDate } = req.query;
+    if (["Happy", "Sad", "Sleepy"].includes(filter)) filter = filter;
+    else filter = null;
+
+    var firstDate;
+    var secondDate;
+    if (startDate && endDate) {
+      firstDate = new Date(startDate);
+      secondDate = new Date(endDate);
+    }
+    const response = await Services.getEmojiNotes(
+      userCode,
+      sort,
+      limit,
+      page,
+      filter,
+      firstDate,
+      secondDate
+    );
 
     res.send(response);
   } catch (error) {
@@ -81,7 +99,7 @@ exports.deleteEmojiNotes = async (req, res) => {
 exports.emojifeed = async (req, res) => {
   try {
     const limit = req.query.limit ? req.query.limit : 10;
-    const page = req.query.page ? req.query.page : 1;
+    const page = req.query.page ? req.query.page : 0;
     const data = await Services.emojifeed(limit, page);
     res.send(data);
   } catch (error) {
@@ -140,6 +158,17 @@ exports.emojiSummery = async (req, res) => {
     const { userCode } = req.payload;
     const { date } = req.query;
     let data = await Services.emojiSummery(userCode, date);
+    res.send(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+exports.isShare = async (req, res) => {
+  try {
+    const { isShare } = req.body;
+    const { userCode } = req.payload;
+    const response = await Services.isShare(isShare, userCode);
     res.send(data);
   } catch (error) {
     throw error;

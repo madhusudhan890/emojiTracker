@@ -23,10 +23,10 @@ exports.createToken = async (data) => {
 exports.verifyToken = async (req, res, next) => {
   try {
     if (!req.headers.authorization)
-      return {
-        statusCode: 400,
+      res.send({
+        statusCode: 401,
         message: "unauthorized",
-      };
+      });
     var decoded = JWT.verify(
       req.headers.authorization.split(" ")[1],
       process.env.SECRET
@@ -42,7 +42,7 @@ exports.urlToken = async (startDate, endDate, userCode) => {
   try {
     const token = JWT.sign(
       {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60,
+        exp: Math.floor(Date.now() / 1000) + 60 * 180,
         data: {
           startDate: startDate,
           endDate: endDate,

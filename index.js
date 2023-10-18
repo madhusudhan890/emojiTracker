@@ -1,5 +1,4 @@
 require("dotenv").config({ path: "./.env" });
-const { error } = require("console");
 const express = require("express");
 const app = express();
 require("./config/databaseConfig");
